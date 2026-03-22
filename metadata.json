@@ -1,0 +1,5 @@
+{
+  "name": "TaskGrid",
+  "description": "An Excel-inspired task management system with dynamic columns, rich text descriptions, monthly archiving, and detailed activity logs.",
+  "requestFramePermissions": []
+}

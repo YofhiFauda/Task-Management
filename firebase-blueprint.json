@@ -1,0 +1,87 @@
+{
+  "entities": {
+    "Task": {
+      "title": "Task",
+      "description": "A task in the system",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "The title of the task" },
+        "description": { "type": "string", "description": "The rich text description of the task" },
+        "categoryId": { "type": "string", "description": "Reference to the category" },
+        "statusId": { "type": "string", "description": "Reference to the status" },
+        "priority": { "type": "string", "enum": ["Low", "Medium", "High", "Urgent"], "description": "The priority level" },
+        "date": { "type": "string", "format": "date", "description": "The date of the task" },
+        "createdBy": { "type": "string", "description": "The user ID who created the task" },
+        "creatorName": { "type": "string", "description": "The name of the creator" },
+        "monthKey": { "type": "string", "description": "Format: YYYY-MM for archiving" },
+        "customFields": { "type": "object", "description": "Values for dynamic columns" }
+      },
+      "required": ["title", "statusId", "monthKey", "createdBy"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "A category for tasks",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "color": { "type": "string", "description": "Hex color code" }
+      },
+      "required": ["name", "color"]
+    },
+    "Status": {
+      "title": "Status",
+      "description": "A status for tasks",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "color": { "type": "string", "description": "Hex color code" },
+        "order": { "type": "number" }
+      },
+      "required": ["name", "color"]
+    },
+    "Column": {
+      "title": "Column",
+      "description": "A dynamic column definition",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["text", "number", "date", "boolean"] },
+        "order": { "type": "number" }
+      },
+      "required": ["name", "type", "order"]
+    },
+    "Log": {
+      "title": "Log",
+      "description": "Activity log for a task",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "action": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "changes": { "type": "object" }
+      },
+      "required": ["userId", "action", "timestamp"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "A comment on a task",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "text", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/tasks/{taskId}": { "schema": "Task", "description": "Main tasks collection" },
+    "/categories/{categoryId}": { "schema": "Category", "description": "Task categories" },
+    "/statuses/{statusId}": { "schema": "Status", "description": "Task statuses" },
+    "/columns/{columnId}": { "schema": "Column", "description": "Dynamic column definitions" },
+    "/tasks/{taskId}/logs/{logId}": { "schema": "Log", "description": "Logs for a specific task" },
+    "/tasks/{taskId}/comments/{commentId}": { "schema": "Comment", "description": "Comments for a specific task" }
+  }
+}

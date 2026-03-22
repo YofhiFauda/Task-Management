@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  body {
+    @apply antialiased text-gray-900 bg-[#F8F9FA];
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-200 rounded-full hover:bg-gray-300 transition-colors;
+  }
+
+  /* Prose Overrides */
+  .prose {
+    @apply text-gray-600 leading-relaxed;
+  }
+
+  .prose h1, .prose h2, .prose h3 {
+    @apply font-bold text-gray-900 mt-4 mb-2;
+  }
+
+  .prose ul {
+    @apply list-disc pl-5 space-y-1 my-2;
+  }
+
+  .prose ol {
+    @apply list-decimal pl-5 space-y-1 my-2;
+  }
+
+  .prose li {
+    @apply pl-1;
+  }
+
+  .prose strong {
+    @apply font-bold text-gray-900;
+  }
+
+  .prose blockquote {
+    @apply border-l-4 border-indigo-200 pl-4 italic my-4 text-gray-500;
+  }
+}

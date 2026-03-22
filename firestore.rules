@@ -1,0 +1,193 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: tasks
+    // Document ID: auto-generated
+    // Fields:
+    //   - title: string (required, < 100 chars)
+    //   - description: string (required, < 5000 chars)
+    //   - categoryId: string (optional)
+    //   - statusId: string (required)
+    //   - priority: string (required, enum: Low, Medium, High, Urgent)
+    //   - date: string (optional, ISO 8601)
+    //   - createdBy: string (required, immutable)
+    //   - creatorName: string (required)
+    //   - monthKey: string (required, YYYY-MM)
+    //   - customFields: map (optional)
+    //
+    // Collection: categories
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required, < 50 chars)
+    //   - color: string (required, hex format)
+    //
+    // Collection: statuses
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required, < 50 chars)
+    //   - color: string (required, hex format)
+    //   - order: number (required)
+    //
+    // Collection: columns
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required, < 50 chars)
+    //   - type: string (required, enum: text, number, date, boolean)
+    //   - order: number (required)
+    //
+    // Subcollection: tasks/{taskId}/logs
+    // Fields:
+    //   - userId: string (required)
+    //   - userName: string (required)
+    //   - action: string (required)
+    //   - timestamp: timestamp (required)
+    //   - changes: map (optional)
+    //
+    // Subcollection: tasks/{taskId}/comments
+    // Fields:
+    //   - userId: string (required)
+    //   - userName: string (required)
+    //   - text: string (required, < 1000 chars)
+    //   - timestamp: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "Yofhi132@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidColor(color) {
+      return color is string && color.matches("^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$");
+    }
+
+    // Domain Validators
+    
+    function isValidTask(data) {
+      return hasRequiredFields(['title', 'statusId', 'monthKey', 'createdBy', 'creatorName']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
+             data.description is string && data.description.size() < 5000 &&
+             data.statusId is string &&
+             data.priority in ['Low', 'Medium', 'High', 'Urgent'] &&
+             data.monthKey is string && data.monthKey.matches("^\\d{4}-\\d{2}$") &&
+             data.createdBy is string &&
+             data.creatorName is string;
+    }
+
+    function isValidCategory(data) {
+      return hasRequiredFields(['name', 'color']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 50 &&
+             isValidColor(data.color);
+    }
+
+    function isValidStatus(data) {
+      return hasRequiredFields(['name', 'color', 'order']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 50 &&
+             isValidColor(data.color) &&
+             data.order is number;
+    }
+
+    function isValidColumn(data) {
+      return hasRequiredFields(['name', 'type', 'order']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 50 &&
+             data.type in ['text', 'number', 'date', 'boolean'] &&
+             data.order is number;
+    }
+
+    function isValidComment(data) {
+      return hasRequiredFields(['userId', 'userName', 'text', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.userName is string &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 1000 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidLog(data) {
+      return hasRequiredFields(['userId', 'userName', 'action', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.userName is string &&
+             data.action is string &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Match Rules
+    // ===============================================================
+
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidTask(request.resource.data) && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isAuthenticated() && isValidTask(request.resource.data) && request.resource.data.createdBy == resource.data.createdBy;
+      allow delete: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || isAdmin());
+
+      match /logs/{logId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && isValidLog(request.resource.data);
+      }
+
+      match /comments/{commentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && isValidComment(request.resource.data);
+        allow update: if isAuthenticated() && isOwner(resource.data.userId) && isValidComment(request.resource.data);
+        allow delete: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
+      }
+    }
+
+    match /categories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // For simplicity, all users can manage categories in this case
+    }
+
+    match /statuses/{statusId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    match /columns/{columnId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.read == true;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+  }
+}
