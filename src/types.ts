@@ -7,13 +7,22 @@ export interface Task {
   categoryId?: string;
   statusId: string;
   priority: 'Low' | 'Medium' | 'High' | 'Urgent';
-  date?: string;
+  date?: string; // Due Date
   createdBy: string;
   creatorName: string;
+  assigneeId?: string;
+  assigneeName?: string;
   monthKey: string;
   customFields?: Record<string, any>;
   createdAt?: Timestamp;
   order: number;
+}
+
+export interface UserProfile {
+  uid: string;
+  displayName: string;
+  email: string;
+  photoURL?: string;
 }
 
 export interface Category {
@@ -62,4 +71,14 @@ export interface Comment {
   userName: string;
   text: string;
   timestamp: Timestamp;
+}
+
+export interface CheatSheetItem {
+  id: string;
+  command: string;
+  description: string;
+  result: string;
+  language?: string;
+  userId: string;
+  createdAt: Timestamp;
 }

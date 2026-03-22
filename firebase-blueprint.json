@@ -74,6 +74,20 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "text", "timestamp"]
+    },
+    "CheatSheetItem": {
+      "title": "CheatSheetItem",
+      "description": "A cheat sheet item for quick reference",
+      "type": "object",
+      "properties": {
+        "command": { "type": "string" },
+        "description": { "type": "string" },
+        "result": { "type": "string" },
+        "language": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["command", "description", "userId", "createdAt"]
     }
   },
   "firestore": {
@@ -82,6 +96,7 @@
     "/statuses/{statusId}": { "schema": "Status", "description": "Task statuses" },
     "/columns/{columnId}": { "schema": "Column", "description": "Dynamic column definitions" },
     "/tasks/{taskId}/logs/{logId}": { "schema": "Log", "description": "Logs for a specific task" },
-    "/tasks/{taskId}/comments/{commentId}": { "schema": "Comment", "description": "Comments for a specific task" }
+    "/tasks/{taskId}/comments/{commentId}": { "schema": "Comment", "description": "Comments for a specific task" },
+    "/cheatsheet/{itemId}": { "schema": "CheatSheetItem", "description": "Quick reference commands and snippets" }
   }
 }

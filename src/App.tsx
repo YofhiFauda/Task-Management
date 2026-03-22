@@ -18,10 +18,12 @@ import {
   where,
   orderBy,
   doc,
+  setDoc,
   updateDoc,
   deleteDoc,
   OperationType,
-  handleFirestoreError
+  handleFirestoreError,
+  writeBatch
 } from './firebase';
 import { Task, Category, Status, ColumnDefinition } from './types';
 import { format, startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
@@ -37,7 +39,8 @@ import {
   ChevronRight,
   ChevronDown,
   Table as TableIcon,
-  Bell
+  Bell,
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -54,6 +57,7 @@ import TaskGrid from './components/TaskGrid';
 import TaskModal from './components/TaskModal';
 import SettingsModal from './components/SettingsModal';
 import HistoryView from './components/HistoryView';
+import CheatSheetView from './components/CheatSheetView';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -64,7 +68,7 @@ export default function App() {
   const [columns, setColumns] = useState<ColumnDefinition[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   
-  const [view, setView] = useState<'current' | 'history'>('current');
+  const [view, setView] = useState<'current' | 'history' | 'cheatsheet'>('current');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -76,9 +80,24 @@ export default function App() {
 
   // Auth listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       setLoading(false);
+      
+      if (user) {
+        // Save user profile to Firestore
+        try {
+          await setDoc(doc(db, 'users', user.uid), {
+            uid: user.uid,
+            displayName: user.displayName,
+            email: user.email,
+            photoURL: user.photoURL,
+            lastLogin: new Date().toISOString()
+          }, { merge: true });
+        } catch (error) {
+          console.error('Error saving user profile:', error);
+        }
+      }
     });
     return unsubscribe;
   }, []);
@@ -240,6 +259,15 @@ export default function App() {
               )}
             >
               History
+            </button>
+            <button
+              onClick={() => setView('cheatsheet')}
+              className={cn(
+                "px-4 py-1.5 rounded-md text-sm font-medium transition-all",
+                view === 'cheatsheet' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              )}
+            >
+              Cheat Sheet
             </button>
           </nav>
         </div>
@@ -418,8 +446,30 @@ export default function App() {
                   handleFirestoreError(error, OperationType.UPDATE, 'tasks');
                 }
               }}
+              onBulkDelete={async (taskIds) => {
+                try {
+                  const batch = writeBatch(db);
+                  taskIds.forEach(id => {
+                    batch.delete(doc(db, 'tasks', id));
+                  });
+                  await batch.commit();
+                } catch (error) {
+                  handleFirestoreError(error, OperationType.DELETE, 'tasks');
+                }
+              }}
+              onBulkStatusUpdate={async (taskIds, statusId) => {
+                try {
+                  const batch = writeBatch(db);
+                  taskIds.forEach(id => {
+                    batch.update(doc(db, 'tasks', id), { statusId });
+                  });
+                  await batch.commit();
+                } catch (error) {
+                  handleFirestoreError(error, OperationType.UPDATE, 'tasks');
+                }
+              }}
             />
-          ) : (
+          ) : view === 'history' ? (
             <HistoryView 
               tasks={filteredTasks}
               categories={categories}
@@ -429,6 +479,8 @@ export default function App() {
                 setIsTaskModalOpen(true);
               }}
             />
+          ) : (
+            <CheatSheetView user={user} />
           )}
         </div>
       </main>

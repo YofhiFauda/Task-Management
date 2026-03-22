@@ -140,9 +140,25 @@ service cloud.firestore {
              data.timestamp is timestamp;
     }
 
+    function isValidCheatSheetItem(data) {
+      return hasRequiredFields(['command', 'description', 'userId', 'createdAt']) &&
+             data.command is string && data.command.size() > 0 && data.command.size() < 2000 &&
+             data.description is string && data.description.size() > 0 && data.description.size() < 2000 &&
+             data.result is string && data.result.size() < 1000 &&
+             data.userId == request.auth.uid &&
+             data.createdAt is timestamp;
+    }
+
     // ===============================================================
     // Match Rules
     // ===============================================================
+
+    match /cheatsheet/{itemId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidCheatSheetItem(request.resource.data);
+      allow update: if isAuthenticated() && isOwner(resource.data.userId) && isValidCheatSheetItem(request.resource.data);
+      allow delete: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
+    }
 
     match /tasks/{taskId} {
       allow read: if isAuthenticated();

@@ -14,7 +14,9 @@ import {
   Italic,
   List,
   ListOrdered,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Code,
+  Quote
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { 
@@ -30,9 +32,10 @@ import {
   serverTimestamp, 
   addDoc,
   OperationType,
-  handleFirestoreError
+  handleFirestoreError,
+  getDocs
 } from '../firebase';
-import { Task, Category, Status, ColumnDefinition, Log, Comment } from '../types';
+import { Task, Category, Status, ColumnDefinition, Log, Comment, UserProfile } from '../types';
 import { format } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import { clsx, type ClassValue } from 'clsx';
@@ -90,6 +93,28 @@ const MenuBar = ({ editor }: { editor: any }) => {
       >
         <ListOrdered className="w-4 h-4" />
       </button>
+      <div className="w-px h-4 bg-gray-200 self-center mx-1" />
+      <button
+        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+        className={cn("p-1.5 rounded hover:bg-gray-100 transition-colors", editor.isActive('codeBlock') && "bg-indigo-50 text-indigo-600")}
+      >
+        <Code className="w-4 h-4" />
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+        className={cn("p-1.5 rounded hover:bg-gray-100 transition-colors", editor.isActive('blockquote') && "bg-indigo-50 text-indigo-600")}
+      >
+        <Quote className="w-4 h-4" />
+      </button>
+      <button
+        onClick={() => {
+          const url = window.prompt('Enter URL');
+          if (url) editor.chain().focus().setLink({ href: url }).run();
+        }}
+        className={cn("p-1.5 rounded hover:bg-gray-100 transition-colors", editor.isActive('link') && "bg-indigo-50 text-indigo-600")}
+      >
+        <LinkIcon className="w-4 h-4" />
+      </button>
     </div>
   );
 };
@@ -100,11 +125,13 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
   const [statusId, setStatusId] = useState(task?.statusId || (statuses[0]?.id || ''));
   const [priority, setPriority] = useState<Task['priority']>(task?.priority || 'Medium');
   const [date, setDate] = useState(task?.date || format(new Date(), 'yyyy-MM-dd'));
+  const [assigneeId, setAssigneeId] = useState(task?.assigneeId || '');
   const [customFields, setCustomFields] = useState<Record<string, any>>(task?.customFields || {});
   
   const [activeTab, setActiveTab] = useState<'details' | 'logs' | 'comments'>('details');
   const [logs, setLogs] = useState<Log[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -123,6 +150,16 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
   });
 
   useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, 'users'));
+        setUsers(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile)));
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      }
+    };
+    fetchUsers();
+
     if (!task) return;
 
     const unsubLogs = onSnapshot(
@@ -153,6 +190,8 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
 
     const description = editor.getHTML();
     const monthKey = format(new Date(), 'yyyy-MM');
+    const assignee = users.find(u => u.uid === assigneeId);
+
     const taskData = {
       title,
       description,
@@ -160,6 +199,8 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
       statusId,
       priority,
       date,
+      assigneeId,
+      assigneeName: assignee?.displayName || '',
       customFields,
       monthKey,
       updatedAt: serverTimestamp(),
@@ -377,7 +418,20 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Date</label>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Assignee</label>
+                    <select
+                      value={assigneeId}
+                      onChange={(e) => setAssigneeId(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-500 rounded-xl outline-none transition-all text-sm"
+                    >
+                      <option value="">Unassigned</option>
+                      {users.map(u => (
+                        <option key={u.uid} value={u.uid}>{u.displayName}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Due Date</label>
                     <input
                       type="date"
                       value={date}
