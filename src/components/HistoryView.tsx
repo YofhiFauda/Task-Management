@@ -65,7 +65,7 @@ export default function HistoryView({ tasks, categories, statuses, onTaskClick }
                               {task.title}
                             </h4>
                             <p className="text-xs text-gray-500 mt-1 line-clamp-1">
-                              {task.description ? task.description.replace(/[#*`]/g, '') : ''}
+                              {task.description ? task.description.replace(/<[^>]*>?/gm, '') : ''}
                             </p>
                           </div>
                           <span 

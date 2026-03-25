@@ -502,6 +502,7 @@ export default function App() {
             statuses={statuses}
             columns={columns}
             onClose={() => setIsTaskModalOpen(false)}
+            maxOrder={tasks.length > 0 ? Math.max(...tasks.map(t => t.order)) : 0}
           />
         )}
         {isSettingsModalOpen && (

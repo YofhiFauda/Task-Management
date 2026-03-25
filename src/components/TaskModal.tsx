@@ -49,7 +49,6 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
-import { Markdown } from 'tiptap-markdown';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -145,7 +144,6 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
       StarterKit,
       Link.configure({ openOnClick: false }),
       Placeholder.configure({ placeholder: 'Describe the task... Use lists, bold, etc.' }),
-      Markdown,
     ],
     content: task?.description || '',
     editorProps: {
@@ -194,7 +192,7 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
     if (!title || !editor) return;
     setIsSaving(true);
 
-    const description = (editor as any).getMarkdown();
+    const description = editor.getHTML();
     const monthKey = format(new Date(), 'yyyy-MM');
     const assignee = users.find(u => u.uid === assigneeId);
 
@@ -221,6 +219,7 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
         // Log changes
         const changes: Record<string, any> = {};
         if (task.title !== title) changes.Title = { old: task.title, new: title };
+        if (task.description !== description) changes.Description = { old: task.description, new: description };
         if (task.statusId !== statusId) {
           const oldS = statuses.find(s => s.id === task.statusId)?.name || 'Unknown';
           const newS = statuses.find(s => s.id === statusId)?.name || 'Unknown';
@@ -279,7 +278,7 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
           createdBy: user.uid,
           creatorName: user.displayName,
           createdAt: serverTimestamp(),
-          order: maxOrder + 1
+          order: (maxOrder || 0) + 1
         });
 
         await addDoc(collection(db, `tasks/${newDocRef.id}/logs`), {
@@ -323,11 +322,11 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
         customFields: task.customFields || {},
         isPinned: task.isPinned || false,
         createdBy: user.uid,
-        createdByName: user.displayName,
+        creatorName: user.displayName,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         commentCount: 0,
-        order: maxOrder + 1000,
+        order: (maxOrder || 0) + 1000,
       };
 
       const newDocRef = await addDoc(collection(db, 'tasks'), newTaskData);
@@ -618,13 +617,21 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
                                 <div className="space-y-1">
                                   <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Old Value</span>
                                   <div className="text-xs text-red-500 line-through truncate bg-red-50/50 px-2 py-1 rounded border border-red-100">
-                                    {String(val.old)}
+                                    {field === 'Description' ? (
+                                      <div dangerouslySetInnerHTML={{ __html: String(val.old) }} />
+                                    ) : (
+                                      String(val.old)
+                                    )}
                                   </div>
                                 </div>
                                 <div className="space-y-1">
                                   <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">New Value</span>
                                   <div className="text-xs text-green-600 font-medium truncate bg-green-50/50 px-2 py-1 rounded border border-green-100">
-                                    {String(val.new)}
+                                    {field === 'Description' ? (
+                                      <div dangerouslySetInnerHTML={{ __html: String(val.new) }} />
+                                    ) : (
+                                      String(val.new)
+                                    )}
                                   </div>
                                 </div>
                               </div>
