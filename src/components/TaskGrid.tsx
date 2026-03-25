@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Task, Category, Status, ColumnDefinition } from '../types';
 import { format } from 'date-fns';
+import ReactMarkdown from 'react-markdown';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
@@ -345,15 +346,16 @@ export default function TaskGrid({
                                 <div className="mt-1">
                                   <div 
                                     className={cn(
-                                      "text-xs text-gray-500 max-w-[400px] transition-all duration-200",
+                                      "text-xs text-gray-500 max-w-[400px] transition-all duration-200 prose prose-sm prose-indigo",
                                       !expandedIds.includes(task.id) && "truncate"
                                     )}
-                                    dangerouslySetInnerHTML={{ 
-                                      __html: expandedIds.includes(task.id) 
+                                  >
+                                    <ReactMarkdown>
+                                      {expandedIds.includes(task.id) 
                                         ? task.description 
-                                        : task.description.replace(/<[^>]*>?/gm, '').slice(0, 60) + (task.description.length > 60 ? '...' : '')
-                                    }}
-                                  />
+                                        : task.description.slice(0, 60) + (task.description.length > 60 ? '...' : '')}
+                                    </ReactMarkdown>
+                                  </div>
                                   {task.description.length > 60 && (
                                     <button 
                                       onClick={(e) => {

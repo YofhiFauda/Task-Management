@@ -49,6 +49,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
+import { Markdown } from 'tiptap-markdown';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -144,6 +145,7 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
       StarterKit,
       Link.configure({ openOnClick: false }),
       Placeholder.configure({ placeholder: 'Describe the task... Use lists, bold, etc.' }),
+      Markdown,
     ],
     content: task?.description || '',
     editorProps: {
@@ -192,7 +194,7 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
     if (!title || !editor) return;
     setIsSaving(true);
 
-    const description = editor.getHTML();
+    const description = (editor as any).getMarkdown();
     const monthKey = format(new Date(), 'yyyy-MM');
     const assignee = users.find(u => u.uid === assigneeId);
 

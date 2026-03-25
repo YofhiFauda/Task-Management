@@ -233,9 +233,9 @@ export default function CheatSheetView({ user }: CheatSheetViewProps) {
                 </div>
 
                 {item.result && (
-                  <div>
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Expected Result</h3>
-                    <div className="p-3 bg-emerald-50 text-emerald-700 rounded-xl text-xs border border-emerald-100">
+                  <div className="mt-4">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Expected Result</h3>
+                    <div className="p-4 bg-gray-900 text-emerald-400 rounded-xl text-xs border border-gray-800 font-mono whitespace-pre-wrap overflow-x-auto max-h-[200px] scrollbar-thin scrollbar-thumb-gray-700">
                       {item.result}
                     </div>
                   </div>
@@ -328,16 +328,15 @@ export default function CheatSheetView({ user }: CheatSheetViewProps) {
                       />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Expected Result (Optional)</label>
-                    <input 
-                      type="text"
-                      value={result}
-                      onChange={(e) => setResult(e.target.value)}
-                      placeholder="e.g. Webhook set successfully"
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-500 rounded-xl outline-none transition-all text-sm"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Expected Result (Optional)</label>
+                  <textarea 
+                    value={result}
+                    onChange={(e) => setResult(e.target.value)}
+                    placeholder="e.g. [+] Building 25.4s (9/9) FINISHED..."
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-500 rounded-xl outline-none transition-all text-sm font-mono min-h-[100px]"
+                  />
+                </div>
                 </div>
 
                 <div className="pt-4 flex gap-3">
