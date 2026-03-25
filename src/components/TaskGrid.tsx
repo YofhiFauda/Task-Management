@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { GripVertical, Trash2, CheckCircle, Users, X, MessageSquare, ChevronDown, ChevronUp, Pin, PinOff } from 'lucide-react';
+import { GripVertical, Trash2, CheckCircle, Users, X, MessageSquare, ChevronDown, ChevronUp, Pin, PinOff, ArrowUp, ArrowDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 function cn(...inputs: any[]) {
@@ -36,6 +36,8 @@ export default function TaskGrid({
 }: TaskGridProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  const [sortConfig, setSortConfig] = useState<{ key: 'status' | 'category' | 'priority' | null, direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
+
   const getCategory = (id?: string) => categories.find(c => c.id === id);
   const getStatus = (id: string) => statuses.find(s => s.id === id);
 
@@ -50,10 +52,49 @@ export default function TaskGrid({
     else setSelectedIds([...selectedIds, id]);
   };
 
-  // Sort tasks by pinned status first, then by order
+  const handleSort = (key: 'status' | 'category' | 'priority' | 'default') => {
+    if (key === 'default') {
+      setSortConfig({ key: null, direction: 'asc' });
+      return;
+    }
+
+    if (sortConfig.key === key) {
+      setSortConfig({ key, direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' });
+    } else {
+      setSortConfig({ key, direction: 'asc' });
+    }
+  };
+
+  const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
+
+  // Sort tasks
   const sortedTasks = [...tasks].sort((a, b) => {
+    // Pinned tasks always at the top
     if (a.isPinned && !b.isPinned) return -1;
     if (!a.isPinned && b.isPinned) return 1;
+
+    if (sortConfig.key) {
+      let comparison = 0;
+      if (sortConfig.key === 'status') {
+        const statusA = getStatus(a.statusId)?.name || '';
+        const statusB = getStatus(b.statusId)?.name || '';
+        comparison = statusA.localeCompare(statusB);
+      } else if (sortConfig.key === 'category') {
+        const catA = getCategory(a.categoryId)?.name || '';
+        const catB = getCategory(b.categoryId)?.name || '';
+        comparison = catA.localeCompare(catB);
+      } else if (sortConfig.key === 'priority') {
+        const orderA = priorityOrder[a.priority as keyof typeof priorityOrder] || 0;
+        const orderB = priorityOrder[b.priority as keyof typeof priorityOrder] || 0;
+        comparison = orderA - orderB;
+      }
+
+      if (comparison !== 0) {
+        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      }
+    }
+
+    // Default or fallback to order
     return a.order - b.order;
   });
 
@@ -177,10 +218,45 @@ export default function TaskGrid({
               <th className="px-4 py-3 w-10"></th>
               <th className="px-4 py-3 w-10"></th>
               <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-20">ID</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[200px]">Title</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">Status</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">Category</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-28">Priority</th>
+              <th 
+                className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[200px] cursor-pointer hover:text-indigo-600 transition-colors"
+                onClick={() => handleSort('default')}
+              >
+                Title
+              </th>
+              <th 
+                className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32 cursor-pointer hover:text-indigo-600 transition-colors"
+                onClick={() => handleSort('status')}
+              >
+                <div className="flex items-center gap-1">
+                  Status
+                  {sortConfig.key === 'status' && (
+                    sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  )}
+                </div>
+              </th>
+              <th 
+                className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32 cursor-pointer hover:text-indigo-600 transition-colors"
+                onClick={() => handleSort('category')}
+              >
+                <div className="flex items-center gap-1">
+                  Category
+                  {sortConfig.key === 'category' && (
+                    sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  )}
+                </div>
+              </th>
+              <th 
+                className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-28 cursor-pointer hover:text-indigo-600 transition-colors"
+                onClick={() => handleSort('priority')}
+              >
+                <div className="flex items-center gap-1">
+                  Priority
+                  {sortConfig.key === 'priority' && (
+                    sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  )}
+                </div>
+              </th>
               <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">Due Date</th>
               <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-40">Assignee</th>
               <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-40">Created By</th>
