@@ -17,7 +17,8 @@ import {
   Link as LinkIcon,
   Code,
   Quote,
-  Pin
+  Pin,
+  Copy
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { 
@@ -304,6 +305,46 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
     }
   };
 
+  const handleDuplicate = async () => {
+    if (!task || isSaving) return;
+    setIsSaving(true);
+    try {
+      const newTaskData = {
+        title: `${task.title} (Copy)`,
+        description: task.description || '',
+        categoryId: task.categoryId || '',
+        statusId: task.statusId,
+        priority: task.priority,
+        date: task.date,
+        assigneeId: task.assigneeId || '',
+        assigneeName: task.assigneeName || '',
+        customFields: task.customFields || {},
+        isPinned: task.isPinned || false,
+        createdBy: user.uid,
+        createdByName: user.displayName,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        commentCount: 0,
+        order: maxOrder + 1000,
+      };
+
+      const newDocRef = await addDoc(collection(db, 'tasks'), newTaskData);
+
+      await addDoc(collection(db, `tasks/${newDocRef.id}/logs`), {
+        userId: user.uid,
+        userName: user.displayName,
+        action: `Duplicated from task #${task.id.slice(-4).toUpperCase()}`,
+        timestamp: serverTimestamp(),
+      });
+
+      onClose();
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'tasks');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleAddComment = async () => {
     if (!task || !newComment.trim()) return;
     try {
@@ -319,13 +360,17 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
         commentCount: increment(1)
       });
 
-      // Create notification for comment
-      if (task.createdBy !== user.uid) {
+      // Notify creator and assignee
+      const recipients = new Set<string>();
+      if (task.createdBy !== user.uid) recipients.add(task.createdBy);
+      if (task.assigneeId && task.assigneeId !== user.uid) recipients.add(task.assigneeId);
+
+      for (const recipientId of recipients) {
         await addDoc(collection(db, 'notifications'), {
-          userId: task.createdBy,
+          userId: recipientId,
           taskId: task.id,
           title: 'New Comment',
-          message: `${user.displayName} commented on your task: "${task.title}"`,
+          message: `${user.displayName} commented on task: "${task.title}"`,
           read: false,
           createdAt: serverTimestamp()
         });
@@ -561,13 +606,26 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
                       </div>
                       <p className="text-sm text-gray-600">{log.action}</p>
                       {log.changes && Object.keys(log.changes).length > 0 && (
-                        <div className="mt-2 text-xs bg-gray-50 p-2 rounded-lg border border-gray-100">
+                        <div className="mt-3 space-y-2">
                           {Object.entries(log.changes).map(([field, val]: [string, any]) => (
-                            <div key={field} className="flex gap-2">
-                              <span className="font-bold text-gray-400">{field}:</span>
-                              <span className="text-red-400 line-through">{String(val.old)}</span>
-                              <span className="text-gray-400">→</span>
-                              <span className="text-green-600 font-medium">{String(val.new)}</span>
+                            <div key={field} className="bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
+                              <div className="px-3 py-1.5 bg-gray-100/50 border-b border-gray-100 flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{field}</span>
+                              </div>
+                              <div className="p-3 grid grid-cols-2 gap-4 items-center">
+                                <div className="space-y-1">
+                                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Old Value</span>
+                                  <div className="text-xs text-red-500 line-through truncate bg-red-50/50 px-2 py-1 rounded border border-red-100">
+                                    {String(val.old)}
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">New Value</span>
+                                  <div className="text-xs text-green-600 font-medium truncate bg-green-50/50 px-2 py-1 rounded border border-green-100">
+                                    {String(val.new)}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -637,15 +695,25 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
 
         {/* Footer */}
         <div className="px-8 py-6 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-          <div>
+          <div className="flex items-center gap-3">
             {task && (
-              <button
-                onClick={handleDelete}
-                className="flex items-center gap-2 text-red-500 hover:text-red-600 px-4 py-2 rounded-xl hover:bg-red-50 transition-all text-sm font-semibold"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete Task
-              </button>
+              <>
+                <button
+                  onClick={handleDelete}
+                  className="flex items-center gap-2 text-red-500 hover:text-red-600 px-4 py-2 rounded-xl hover:bg-red-50 transition-all text-sm font-semibold"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+                <button
+                  onClick={handleDuplicate}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 px-4 py-2 rounded-xl hover:bg-indigo-50 transition-all text-sm font-semibold"
+                >
+                  <Copy className="w-4 h-4" />
+                  Duplicate
+                </button>
+              </>
             )}
           </div>
           <div className="flex items-center gap-3">
