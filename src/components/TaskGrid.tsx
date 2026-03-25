@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { GripVertical, Trash2, CheckCircle, Users, X, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { GripVertical, Trash2, CheckCircle, Users, X, MessageSquare, ChevronDown, ChevronUp, Pin, PinOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 function cn(...inputs: any[]) {
@@ -20,6 +20,7 @@ interface TaskGridProps {
   onReorder: (taskId: string, newOrder: number) => void;
   onBulkDelete: (taskIds: string[]) => void;
   onBulkStatusUpdate: (taskIds: string[], statusId: string) => void;
+  onTogglePin: (taskId: string, isPinned: boolean) => void;
 }
 
 export default function TaskGrid({ 
@@ -30,7 +31,8 @@ export default function TaskGrid({
   onTaskClick, 
   onReorder,
   onBulkDelete,
-  onBulkStatusUpdate
+  onBulkStatusUpdate,
+  onTogglePin
 }: TaskGridProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
@@ -48,8 +50,12 @@ export default function TaskGrid({
     else setSelectedIds([...selectedIds, id]);
   };
 
-  // Sort tasks by order
-  const sortedTasks = [...tasks].sort((a, b) => a.order - b.order);
+  // Sort tasks by pinned status first, then by order
+  const sortedTasks = [...tasks].sort((a, b) => {
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    return a.order - b.order;
+  });
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
@@ -60,10 +66,36 @@ export default function TaskGrid({
     if (sourceIndex === destIndex) return;
 
     const taskToMove = sortedTasks[sourceIndex];
-    // Simple reordering logic: move to the new position and update order
-    // In a real app, you might want more sophisticated logic (e.g. fractional indexing)
-    // Here we'll just pass the new index + 1 as the new order
-    onReorder(taskToMove.id, destIndex + 1);
+    const destinationTask = sortedTasks[destIndex];
+
+    // If moving across pinned/unpinned boundary, we should update the pinned status
+    const willBePinned = destinationTask.isPinned;
+    
+    // Calculate new order
+    let newOrder: number;
+    if (destIndex === 0) {
+      newOrder = sortedTasks[0].order - 1000;
+    } else if (destIndex === sortedTasks.length - 1) {
+      newOrder = sortedTasks[sortedTasks.length - 1].order + 1000;
+    } else {
+      // Find the neighbors in the new position
+      const prevTask = sourceIndex < destIndex ? sortedTasks[destIndex] : sortedTasks[destIndex - 1];
+      const nextTask = sourceIndex < destIndex ? sortedTasks[destIndex + 1] : sortedTasks[destIndex];
+      
+      if (prevTask && nextTask) {
+        newOrder = (prevTask.order + nextTask.order) / 2;
+      } else {
+        newOrder = destinationTask.order + (sourceIndex < destIndex ? 500 : -500);
+      }
+    }
+
+    // If we are moving between pinned/unpinned, we need to handle that
+    // For simplicity, let's just update the pinned status if it's different
+    if (!!taskToMove.isPinned !== !!willBePinned) {
+      onTogglePin(taskToMove.id, !!willBePinned);
+    }
+
+    onReorder(taskToMove.id, newOrder);
   };
 
   return (
@@ -143,6 +175,7 @@ export default function TaskGrid({
                 />
               </th>
               <th className="px-4 py-3 w-10"></th>
+              <th className="px-4 py-3 w-10"></th>
               <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-20">ID</th>
               <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[200px]">Title</th>
               <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">Status</th>
@@ -167,7 +200,7 @@ export default function TaskGrid({
               >
                 {sortedTasks.length === 0 ? (
                   <tr>
-                    <td colSpan={8 + columns.length} className="px-6 py-12 text-center text-gray-500 italic">
+                    <td colSpan={9 + columns.length} className="px-6 py-12 text-center text-gray-500 italic">
                       No tasks found for this period.
                     </td>
                   </tr>
@@ -199,6 +232,23 @@ export default function TaskGrid({
                             </td>
                             <td className="px-4 py-3" {...provided.dragHandleProps}>
                               <GripVertical className="w-4 h-4 text-gray-300 group-hover:text-gray-400" />
+                            </td>
+                            <td className="px-4 py-3">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onTogglePin(task.id, !task.isPinned);
+                                }}
+                                className={cn(
+                                  "p-1.5 rounded-lg transition-all",
+                                  task.isPinned 
+                                    ? "bg-amber-100 text-amber-600 hover:bg-amber-200" 
+                                    : "text-gray-300 hover:text-gray-500 hover:bg-gray-100"
+                                )}
+                                title={task.isPinned ? "Unpin task" : "Pin task to top"}
+                              >
+                                {task.isPinned ? <Pin className="w-4 h-4 fill-current" /> : <Pin className="w-4 h-4" />}
+                              </button>
                             </td>
                             <td className="px-4 py-3 text-sm font-mono text-gray-400">
                               #{task.id.slice(-4).toUpperCase()}

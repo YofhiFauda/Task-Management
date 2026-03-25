@@ -15,7 +15,8 @@
         "creatorName": { "type": "string", "description": "The name of the creator" },
         "monthKey": { "type": "string", "description": "Format: YYYY-MM for archiving" },
         "customFields": { "type": "object", "description": "Values for dynamic columns" },
-        "commentCount": { "type": "number", "description": "Total number of comments for this task" }
+        "commentCount": { "type": "number", "description": "Total number of comments for this task" },
+        "isPinned": { "type": "boolean", "description": "Whether the task is pinned to the top" }
       },
       "required": ["title", "statusId", "monthKey", "createdBy"]
     },

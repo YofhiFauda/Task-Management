@@ -17,6 +17,7 @@ export interface Task {
   createdAt?: Timestamp;
   order: number;
   commentCount?: number;
+  isPinned?: boolean;
 }
 
 export interface UserProfile {

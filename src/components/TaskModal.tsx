@@ -16,7 +16,8 @@ import {
   ListOrdered,
   Link as LinkIcon,
   Code,
-  Quote
+  Quote,
+  Pin
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { 
@@ -134,6 +135,7 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
   const [comments, setComments] = useState<Comment[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [isPinned, setIsPinned] = useState(task?.isPinned || false);
   const [isSaving, setIsSaving] = useState(false);
 
   const editor = useEditor({
@@ -203,6 +205,7 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
       assigneeId,
       assigneeName: assignee?.displayName || '',
       customFields,
+      isPinned,
       monthKey,
       updatedAt: serverTimestamp(),
     };
@@ -226,6 +229,7 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
           changes.Category = { old: oldC, new: newC };
         }
         if (task.priority !== priority) changes.Priority = { old: task.priority, new: priority };
+        if (task.isPinned !== isPinned) changes.Pinned = { old: task.isPinned ? 'Yes' : 'No', new: isPinned ? 'Yes' : 'No' };
         if (task.date !== date) changes['Due Date'] = { old: task.date || 'None', new: date || 'None' };
         if (task.assigneeId !== assigneeId) {
           const oldA = users.find(u => u.uid === task.assigneeId)?.displayName || 'Unassigned';
@@ -368,9 +372,23 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
-            <X className="w-6 h-6 text-gray-400" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsPinned(!isPinned)}
+              className={cn(
+                "p-2 rounded-full transition-all",
+                isPinned 
+                  ? "bg-amber-100 text-amber-600 hover:bg-amber-200" 
+                  : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              )}
+              title={isPinned ? "Unpin task" : "Pin task to top"}
+            >
+              {isPinned ? <Pin className="w-6 h-6 fill-current" /> : <Pin className="w-6 h-6" />}
+            </button>
+            <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+              <X className="w-6 h-6 text-gray-400" />
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}

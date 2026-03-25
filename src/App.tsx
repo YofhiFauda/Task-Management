@@ -468,6 +468,13 @@ export default function App() {
                   handleFirestoreError(error, OperationType.UPDATE, 'tasks');
                 }
               }}
+              onTogglePin={async (taskId, isPinned) => {
+                try {
+                  await updateDoc(doc(db, 'tasks', taskId), { isPinned });
+                } catch (error) {
+                  handleFirestoreError(error, OperationType.UPDATE, 'tasks');
+                }
+              }}
             />
           ) : view === 'history' ? (
             <HistoryView 
