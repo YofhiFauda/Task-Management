@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { GripVertical, Trash2, CheckCircle, Users, X } from 'lucide-react';
+import { GripVertical, Trash2, CheckCircle, Users, X, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 function cn(...inputs: any[]) {
@@ -203,8 +203,16 @@ export default function TaskGrid({
                               #{task.id.slice(-4).toUpperCase()}
                             </td>
                             <td className="px-4 py-3">
-                              <div className="text-sm font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">
-                                {task.title}
+                              <div className="flex items-center gap-2">
+                                <div className="text-sm font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">
+                                  {task.title}
+                                </div>
+                                {task.commentCount !== undefined && task.commentCount > 0 && (
+                                  <div className="flex items-center gap-1 px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[10px] font-bold border border-indigo-100">
+                                    <MessageSquare className="w-2.5 h-2.5" />
+                                    {task.commentCount}
+                                  </div>
+                                )}
                               </div>
                               {task.description && (
                                 <div 

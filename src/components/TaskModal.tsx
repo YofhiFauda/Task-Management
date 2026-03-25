@@ -33,7 +33,8 @@ import {
   addDoc,
   OperationType,
   handleFirestoreError,
-  getDocs
+  getDocs,
+  increment
 } from '../firebase';
 import { Task, Category, Status, ColumnDefinition, Log, Comment, UserProfile } from '../types';
 import { format } from 'date-fns';
@@ -213,16 +214,43 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
         
         // Log changes
         const changes: Record<string, any> = {};
-        if (task.title !== title) changes.title = { old: task.title, new: title };
-        if (task.statusId !== statusId) changes.statusId = { old: task.statusId, new: statusId };
-        
-        await addDoc(collection(db, `tasks/${task.id}/logs`), {
-          userId: user.uid,
-          userName: user.displayName,
-          action: 'Updated task',
-          timestamp: serverTimestamp(),
-          changes
+        if (task.title !== title) changes.Title = { old: task.title, new: title };
+        if (task.statusId !== statusId) {
+          const oldS = statuses.find(s => s.id === task.statusId)?.name || 'Unknown';
+          const newS = statuses.find(s => s.id === statusId)?.name || 'Unknown';
+          changes.Status = { old: oldS, new: newS };
+        }
+        if (task.categoryId !== categoryId) {
+          const oldC = categories.find(c => c.id === task.categoryId)?.name || 'None';
+          const newC = categories.find(c => c.id === categoryId)?.name || 'None';
+          changes.Category = { old: oldC, new: newC };
+        }
+        if (task.priority !== priority) changes.Priority = { old: task.priority, new: priority };
+        if (task.date !== date) changes['Due Date'] = { old: task.date || 'None', new: date || 'None' };
+        if (task.assigneeId !== assigneeId) {
+          const oldA = users.find(u => u.uid === task.assigneeId)?.displayName || 'Unassigned';
+          const newA = users.find(u => u.uid === assigneeId)?.displayName || 'Unassigned';
+          changes.Assignee = { old: oldA, new: newA };
+        }
+
+        // Custom fields
+        columns.forEach(col => {
+          const oldVal = task.customFields?.[col.id];
+          const newVal = customFields[col.id];
+          if (oldVal !== newVal) {
+            changes[col.name] = { old: oldVal ?? 'None', new: newVal ?? 'None' };
+          }
         });
+        
+        if (Object.keys(changes).length > 0) {
+          await addDoc(collection(db, `tasks/${task.id}/logs`), {
+            userId: user.uid,
+            userName: user.displayName,
+            action: 'Updated task',
+            timestamp: serverTimestamp(),
+            changes
+          });
+        }
 
         // Create notification for status change
         if (task.statusId !== statusId) {
@@ -282,6 +310,11 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
         timestamp: serverTimestamp(),
       });
 
+      // Increment comment count on task
+      await updateDoc(doc(db, 'tasks', task.id), {
+        commentCount: increment(1)
+      });
+
       // Create notification for comment
       if (task.createdBy !== user.uid) {
         await addDoc(collection(db, 'notifications'), {
@@ -297,6 +330,20 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
       setNewComment('');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, `tasks/${task.id}/comments`);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!task || !window.confirm('Delete this comment?')) return;
+    try {
+      await deleteDoc(doc(db, `tasks/${task.id}/comments`, commentId));
+      
+      // Decrement comment count on task
+      await updateDoc(doc(db, 'tasks', task.id), {
+        commentCount: increment(-1)
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `tasks/${task.id}/comments`);
     }
   };
 
@@ -526,9 +573,19 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
                         <UserIcon className="w-4 h-4 text-indigo-600" />
                       </div>
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-bold text-gray-900">{comment.userName}</span>
-                          <span className="text-[10px] text-gray-400">{comment.timestamp ? format(comment.timestamp.toDate(), 'MMM d, HH:mm') : 'Just now'}</span>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-gray-900">{comment.userName}</span>
+                            <span className="text-[10px] text-gray-400">{comment.timestamp ? format(comment.timestamp.toDate(), 'MMM d, HH:mm') : 'Just now'}</span>
+                          </div>
+                          {(comment.userId === user.uid || task.createdBy === user.uid) && (
+                            <button 
+                              onClick={() => handleDeleteComment(comment.id)}
+                              className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
                         </div>
                         <div className="bg-gray-50 p-4 rounded-2xl rounded-tl-none text-sm text-gray-700 border border-gray-100">
                           {comment.text}

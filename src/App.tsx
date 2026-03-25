@@ -4,7 +4,6 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import type { AuthError } from 'firebase/auth';
 import { 
   auth, 
   db, 
@@ -24,8 +23,7 @@ import {
   deleteDoc,
   OperationType,
   handleFirestoreError,
-  writeBatch,
-  firebaseProjectId
+  writeBatch
 } from './firebase';
 import { Task, Category, Status, ColumnDefinition } from './types';
 import { format, startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
@@ -42,9 +40,7 @@ import {
   ChevronDown,
   Table as TableIcon,
   Bell,
-  Zap,
-  AlertTriangle,
-  ExternalLink
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -79,24 +75,8 @@ export default function App() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string | 'all'>('all');
-  const [loginError, setLoginError] = useState<string | null>(null);
 
   const currentMonthKey = format(new Date(), 'yyyy-MM');
-  const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
-  const unauthorizedDomainHint = useMemo(() => {
-    if (!currentHostname) return null;
-
-    const knownSafeHosts = new Set([
-      'localhost',
-      '127.0.0.1',
-      auth.config.authDomain,
-      new URL(`https://${auth.config.authDomain}`).hostname,
-    ]);
-
-    return knownSafeHosts.has(currentHostname)
-      ? null
-      : `Jika login Google gagal di domain ${currentHostname}, tambahkan domain tersebut ke Firebase Console → Authentication → Settings → Authorized domains.`;
-  }, [currentHostname]);
 
   // Auth listener
   useEffect(() => {
@@ -209,22 +189,10 @@ export default function App() {
   }, [tasks, view, searchQuery, filterStatus, currentMonthKey]);
 
   const handleLogin = async () => {
-    setLoginError(null);
-
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error('Login failed', error);
-
-      const authError = error as AuthError;
-      if (authError.code === 'auth/unauthorized-domain') {
-        setLoginError(
-          `Domain ${currentHostname || 'saat ini'} belum masuk daftar Authorized domains di Firebase. Tambahkan domain tersebut di Firebase Console → Authentication → Settings → Authorized domains, lalu deploy ulang bila perlu.`
-        );
-        return;
-      }
-
-      setLoginError('Login Google gagal. Silakan coba lagi, lalu cek konfigurasi Firebase Authentication jika masalah tetap muncul.');
     }
   };
 
@@ -250,7 +218,7 @@ export default function App() {
             <LayoutGrid className="w-8 h-8 text-indigo-600" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">TaskGrid</h1>
-          <p className="text-gray-500 mb-6">Excel-inspired task management for high-performance teams.</p>
+          <p className="text-gray-500 mb-8">Excel-inspired task management for high-performance teams.</p>
           <button
             onClick={handleLogin}
             className="w-full flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-lg shadow-indigo-200"
@@ -258,26 +226,6 @@ export default function App() {
             <LogIn className="w-5 h-5" />
             Sign in with Google
           </button>
-          {(loginError || unauthorizedDomainHint) && (
-            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-left text-sm text-amber-900">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0" />
-                <div className="space-y-2">
-                  {loginError && <p className="font-medium">{loginError}</p>}
-                  {unauthorizedDomainHint && <p>{unauthorizedDomainHint}</p>}
-                  <a
-                    href={`https://console.firebase.google.com/project/${firebaseProjectId}/authentication/settings`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 font-medium text-amber-900 underline underline-offset-2"
-                  >
-                    Buka Firebase Authentication Settings
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                </div>
-              </div>
-            </div>
-          )}
         </motion.div>
       </div>
     );

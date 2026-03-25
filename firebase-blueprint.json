@@ -14,7 +14,8 @@
         "createdBy": { "type": "string", "description": "The user ID who created the task" },
         "creatorName": { "type": "string", "description": "The name of the creator" },
         "monthKey": { "type": "string", "description": "Format: YYYY-MM for archiving" },
-        "customFields": { "type": "object", "description": "Values for dynamic columns" }
+        "customFields": { "type": "object", "description": "Values for dynamic columns" },
+        "commentCount": { "type": "number", "description": "Total number of comments for this task" }
       },
       "required": ["title", "statusId", "monthKey", "createdBy"]
     },

@@ -16,6 +16,7 @@ export interface Task {
   customFields?: Record<string, any>;
   createdAt?: Timestamp;
   order: number;
+  commentCount?: number;
 }
 
 export interface UserProfile {
