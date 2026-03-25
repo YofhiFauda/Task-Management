@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { GripVertical, Trash2, CheckCircle, Users, X, MessageSquare } from 'lucide-react';
+import { GripVertical, Trash2, CheckCircle, Users, X, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 function cn(...inputs: any[]) {
@@ -33,6 +33,7 @@ export default function TaskGrid({
   onBulkStatusUpdate
 }: TaskGridProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const getCategory = (id?: string) => categories.find(c => c.id === id);
   const getStatus = (id: string) => statuses.find(s => s.id === id);
 
@@ -215,10 +216,42 @@ export default function TaskGrid({
                                 )}
                               </div>
                               {task.description && (
-                                <div 
-                                  className="text-xs text-gray-500 truncate max-w-[300px]"
-                                  dangerouslySetInnerHTML={{ __html: task.description.replace(/<[^>]*>?/gm, '').slice(0, 60) + '...' }}
-                                />
+                                <div className="mt-1">
+                                  <div 
+                                    className={cn(
+                                      "text-xs text-gray-500 max-w-[400px] transition-all duration-200",
+                                      !expandedIds.includes(task.id) && "truncate"
+                                    )}
+                                    dangerouslySetInnerHTML={{ 
+                                      __html: expandedIds.includes(task.id) 
+                                        ? task.description 
+                                        : task.description.replace(/<[^>]*>?/gm, '').slice(0, 60) + (task.description.length > 60 ? '...' : '')
+                                    }}
+                                  />
+                                  {task.description.length > 60 && (
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setExpandedIds(prev => 
+                                          prev.includes(task.id) ? prev.filter(id => id !== task.id) : [...prev, task.id]
+                                        );
+                                      }}
+                                      className="flex items-center gap-0.5 text-[10px] text-indigo-600 font-bold hover:text-indigo-700 transition-colors mt-1"
+                                    >
+                                      {expandedIds.includes(task.id) ? (
+                                        <>
+                                          <ChevronUp className="w-3 h-3" />
+                                          Show Less
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ChevronDown className="w-3 h-3" />
+                                          Show More
+                                        </>
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
                               )}
                             </td>
                             <td className="px-4 py-3">
