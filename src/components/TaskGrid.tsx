@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Task, Category, Status, ColumnDefinition } from '../types';
+import { Task, Category, Status, ColumnDefinition, Project } from '../types';  // ✅ Added Project
 import { format } from 'date-fns';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -16,6 +16,7 @@ interface TaskGridProps {
   categories: Category[];
   statuses: Status[];
   columns: ColumnDefinition[];
+  projects: Project[];  // ✅ Added for project name display
   onTaskClick: (task: Task) => void;
   onReorder: (taskId: string, newOrder: number) => void;
   onBulkDelete: (taskIds: string[]) => void;
@@ -27,7 +28,8 @@ export default function TaskGrid({
   tasks, 
   categories, 
   statuses, 
-  columns, 
+  columns,
+  projects,  // ✅ Added
   onTaskClick, 
   onReorder,
   onBulkDelete,
@@ -40,6 +42,7 @@ export default function TaskGrid({
 
   const getCategory = (id?: string) => categories.find(c => c.id === id);
   const getStatus = (id: string) => statuses.find(s => s.id === id);
+  const getProject = (id?: string) => projects.find(p => p.id === id);  // ✅ Added helper
 
   const toggleSelectAll = () => {
     if (selectedIds.length === tasks.length) setSelectedIds([]);
@@ -284,6 +287,7 @@ export default function TaskGrid({
                   sortedTasks.map((task, idx) => {
                     const status = getStatus(task.statusId);
                     const category = getCategory(task.categoryId);
+                    const project = getProject(task.projectId);  // ✅ Added
 
                     return (
                       <Draggable key={task.id} draggableId={task.id} index={idx}>
@@ -330,7 +334,7 @@ export default function TaskGrid({
                               #{task.id.slice(-4).toUpperCase()}
                             </td>
                             <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <div className="text-sm font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">
                                   {task.title}
                                 </div>
@@ -338,6 +342,12 @@ export default function TaskGrid({
                                   <div className="flex items-center gap-1 px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[10px] font-bold border border-indigo-100">
                                     <MessageSquare className="w-2.5 h-2.5" />
                                     {task.commentCount}
+                                  </div>
+                                )}
+                                {/* ✅ Project Badge */}
+                                {project && (
+                                  <div className="flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-700 rounded-md text-[10px] font-bold border border-purple-100">
+                                    📁 {project.name}
                                   </div>
                                 )}
                               </div>
