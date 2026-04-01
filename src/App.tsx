@@ -156,7 +156,11 @@ export default function App() {
     );
 
     const unsubProjects = onSnapshot(
-      query(collection(db, 'projects'), orderBy('createdAt', 'desc')),
+      query(
+        collection(db, 'projects'), 
+        where('userId', '==', user.uid),  // ✅ FIXED: Added userId filter
+        orderBy('createdAt', 'desc')
+      ),
       (snapshot) => {
         setProjects(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project)));
       },
@@ -511,7 +515,7 @@ export default function App() {
                   await addDoc(collection(db, 'projects'), {
                     name,
                     description,
-                    createdBy: user.uid,
+                    userId: user.uid,  // ✅ FIXED: Changed from createdBy to userId
                     createdAt: serverTimestamp(),
                   });
                 } catch (error) {
