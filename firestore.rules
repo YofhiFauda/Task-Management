@@ -149,6 +149,14 @@ service cloud.firestore {
              data.createdAt is timestamp;
     }
 
+    function isValidProject(data) {
+      return hasRequiredFields(['name', 'createdBy', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 120 &&
+             (!data.keys().hasAny(['description']) || (data.description is string && data.description.size() < 500)) &&
+             data.createdBy == request.auth.uid &&
+             (data.createdAt is timestamp || data.createdAt is string);
+    }
+
     // ===============================================================
     // Match Rules
     // ===============================================================
@@ -204,6 +212,16 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.read == true;
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    match /projects/{projectId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidProject(request.resource.data);
+      allow update: if isAuthenticated() &&
+                    resource.data.createdBy == request.auth.uid &&
+                    isValidProject(request.resource.data);
+      allow delete: if isAuthenticated() &&
+                    (resource.data.createdBy == request.auth.uid || isAdmin());
     }
   }
 }
