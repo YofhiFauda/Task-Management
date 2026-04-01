@@ -21,11 +21,12 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
+  addDoc,
   OperationType,
   handleFirestoreError,
   writeBatch
 } from './firebase';
-import { Task, Category, Status, ColumnDefinition } from './types';
+import { Task, Category, Status, ColumnDefinition, Project } from './types';
 import { format, startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
 import { 
   LayoutGrid, 
@@ -67,6 +68,7 @@ export default function App() {
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [columns, setColumns] = useState<ColumnDefinition[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   
   const [view, setView] = useState<'current' | 'history' | 'cheatsheet'>('current');
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,6 +77,7 @@ export default function App() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string | 'all'>('all');
+  const [activeProjectId, setActiveProjectId] = useState<string | 'all'>('all');
 
   const currentMonthKey = format(new Date(), 'yyyy-MM');
 
@@ -151,12 +154,21 @@ export default function App() {
       (error) => handleFirestoreError(error, OperationType.LIST, 'notifications')
     );
 
+    const unsubProjects = onSnapshot(
+      query(collection(db, 'projects'), orderBy('createdAt', 'desc')),
+      (snapshot) => {
+        setProjects(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project)));
+      },
+      (error) => handleFirestoreError(error, OperationType.LIST, 'projects')
+    );
+
     return () => {
       unsubTasks();
       unsubCats();
       unsubStats();
       unsubCols();
       unsubNotifications();
+      unsubProjects();
     };
   }, [user]);
 
@@ -184,9 +196,10 @@ export default function App() {
       const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                            task.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = filterStatus === 'all' || task.statusId === filterStatus;
-      return matchesMonth && matchesSearch && matchesStatus;
+      const matchesProject = activeProjectId === 'all' || task.projectId === activeProjectId;
+      return matchesMonth && matchesSearch && matchesStatus && matchesProject;
     });
-  }, [tasks, view, searchQuery, filterStatus, currentMonthKey]);
+  }, [tasks, view, searchQuery, filterStatus, activeProjectId, currentMonthKey]);
 
   const handleLogin = async () => {
     try {
@@ -403,6 +416,17 @@ export default function App() {
 
           <div className="flex items-center gap-3">
             <select
+              value={activeProjectId}
+              onChange={(e) => setActiveProjectId(e.target.value)}
+              className="bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+            >
+              <option value="all">All Projects</option>
+              {projects.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+
+            <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
               className="bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
@@ -478,12 +502,24 @@ export default function App() {
             />
           ) : view === 'history' ? (
             <HistoryView 
-              tasks={filteredTasks}
-              categories={categories}
-              statuses={statuses}
-              onTaskClick={(task) => {
-                setSelectedTask(task);
-                setIsTaskModalOpen(true);
+              projects={projects}
+              tasks={tasks}
+              onCreateProject={async (name, description) => {
+                if (!user) return;
+                try {
+                  await addDoc(collection(db, 'projects'), {
+                    name,
+                    description,
+                    createdBy: user.uid,
+                    createdAt: new Date().toISOString()
+                  });
+                } catch (error) {
+                  handleFirestoreError(error, OperationType.CREATE, 'projects');
+                }
+              }}
+              onOpenProject={(projectId) => {
+                setActiveProjectId(projectId);
+                setView('current');
               }}
             />
           ) : (
@@ -503,6 +539,9 @@ export default function App() {
             columns={columns}
             onClose={() => setIsTaskModalOpen(false)}
             maxOrder={tasks.length > 0 ? Math.max(...tasks.map(t => t.order)) : 0}
+            minOrder={tasks.length > 0 ? Math.min(...tasks.map(t => t.order)) : 0}
+            projects={projects}
+            activeProjectId={activeProjectId}
           />
         )}
         {isSettingsModalOpen && (
