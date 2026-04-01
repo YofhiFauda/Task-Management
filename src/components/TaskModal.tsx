@@ -38,7 +38,7 @@ import {
   getDocs,
   increment
 } from '../firebase';
-import { Task, Category, Status, ColumnDefinition, Log, Comment, UserProfile } from '../types';
+import { Task, Category, Status, ColumnDefinition, Log, Comment, UserProfile, Project } from '../types';
 import { format } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import { clsx, type ClassValue } from 'clsx';
@@ -62,6 +62,9 @@ interface TaskModalProps {
   columns: ColumnDefinition[];
   onClose: () => void;
   maxOrder?: number;
+  minOrder?: number;
+  projects: Project[];
+  activeProjectId: string | 'all';
 }
 
 const MenuBar = ({ editor }: { editor: any }) => {
@@ -122,7 +125,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
   );
 };
 
-export default function TaskModal({ user, task, categories, statuses, columns, onClose, maxOrder = 0 }: TaskModalProps) {
+export default function TaskModal({ user, task, categories, statuses, columns, onClose, maxOrder = 0, minOrder = 0, projects, activeProjectId }: TaskModalProps) {
   const [title, setTitle] = useState(task?.title || '');
   const [categoryId, setCategoryId] = useState(task?.categoryId || '');
   const [statusId, setStatusId] = useState(task?.statusId || (statuses[0]?.id || ''));
@@ -137,6 +140,7 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isPinned, setIsPinned] = useState(task?.isPinned || false);
+  const [projectId, setProjectId] = useState(task?.projectId || (activeProjectId === 'all' ? '' : activeProjectId));
   const [isSaving, setIsSaving] = useState(false);
 
   const editor = useEditor({
@@ -209,6 +213,7 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
       isPinned,
       monthKey,
       updatedAt: serverTimestamp(),
+      projectId,
     };
 
     try {
@@ -278,7 +283,7 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
           createdBy: user.uid,
           creatorName: user.displayName,
           createdAt: serverTimestamp(),
-          order: (maxOrder || 0) + 1
+          order: (minOrder || 0) - 1000
         });
 
         await addDoc(collection(db, `tasks/${newDocRef.id}/logs`), {
@@ -327,6 +332,7 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
         updatedAt: serverTimestamp(),
         commentCount: 0,
         order: (maxOrder || 0) + 1000,
+        projectId: task.projectId || (activeProjectId === 'all' ? '' : activeProjectId),
       };
 
       const newDocRef = await addDoc(collection(db, 'tasks'), newTaskData);
@@ -515,6 +521,19 @@ export default function TaskModal({ user, task, categories, statuses, columns, o
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Project</label>
+                    <select
+                      value={projectId}
+                      onChange={(e) => setProjectId(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-500 rounded-xl outline-none transition-all text-sm"
+                    >
+                      <option value="">No Project</option>
+                      {projects.map((project) => (
+                        <option key={project.id} value={project.id}>{project.name}</option>
+                      ))}
+                    </select>
+                  </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Category</label>
                     <select
