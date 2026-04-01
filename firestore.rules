@@ -152,8 +152,6 @@ service cloud.firestore {
     function isValidProject(data) {
       return hasRequiredFields(['name', 'createdBy', 'createdAt']) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 120 &&
-             data.createdBy == request.auth.uid &&
-             data.createdAt is timestamp;
     }
 
     // ===============================================================
