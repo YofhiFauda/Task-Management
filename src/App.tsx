@@ -43,7 +43,8 @@ import {
   Table as TableIcon,
   Bell,
   Zap,
-  FolderKanban  // ✅ Added
+  FolderKanban,
+  X  // ✅ Added
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -82,6 +83,7 @@ export default function App() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string | 'all'>('all');
   const [activeProjectId, setActiveProjectId] = useState<string | 'all'>('all');
+  const [showProjectSelector, setShowProjectSelector] = useState(false);  // ✅ Added for project selection UI
 
   const currentMonthKey = format(new Date(), 'yyyy-MM');
 
@@ -200,7 +202,11 @@ export default function App() {
 
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
-      const matchesMonth = view === 'current' ? task.monthKey === currentMonthKey : task.monthKey !== currentMonthKey;
+      // ✅ FIX: Jika project dipilih, ignore month filter
+      const matchesMonth = activeProjectId !== 'all' 
+        ? true  // Show all months when project is selected
+        : (view === 'current' ? task.monthKey === currentMonthKey : task.monthKey !== currentMonthKey);
+      
       const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                            task.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = filterStatus === 'all' || task.statusId === filterStatus;
@@ -424,25 +430,63 @@ export default function App() {
       <main className="flex-1 p-6 overflow-hidden flex flex-col">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              {view === 'current' ? `Tasks for ${format(new Date(), 'MMMM yyyy')}` : 'Task Archives'}
-            </h2>
-            <p className="text-gray-500 text-sm">
-              {filteredTasks.length} tasks found
-            </p>
+            {/* ✅ Project-centric title */}
+            {activeProjectId === 'all' ? (
+              <>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  All Projects
+                </h2>
+                <p className="text-gray-500 text-sm">
+                  {filteredTasks.length} tasks found • Select a project to manage tasks
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                  <FolderKanban className="w-7 h-7 text-purple-600" />
+                  {projects.find(p => p.id === activeProjectId)?.name || 'Project'} Tasks
+                </h2>
+                <p className="text-gray-500 text-sm">
+                  {filteredTasks.length} tasks in this project
+                  <span className="ml-2 text-purple-600 font-medium">
+                    • Showing all months
+                  </span>
+                </p>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
-            <select
-              value={activeProjectId}
-              onChange={(e) => setActiveProjectId(e.target.value)}
-              className="bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-            >
-              <option value="all">All Projects</option>
-              {projects.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+            {/* ✅ Prominent Project Selector */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-semibold text-gray-600">Project:</label>
+              <select
+                value={activeProjectId}
+                onChange={(e) => setActiveProjectId(e.target.value)}
+                className={`${
+                  activeProjectId === 'all' 
+                    ? 'bg-orange-50 border-orange-300 text-orange-900 ring-2 ring-orange-200' 
+                    : 'bg-purple-50 border-purple-300 text-purple-900 ring-2 ring-purple-200'
+                } border rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none min-w-[200px]`}
+              >
+                <option value="all">⚠️ Select a Project</option>
+                {projects.map(p => (
+                  <option key={p.id} value={p.id}>📁 {p.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Clear Filter Button */}
+            {activeProjectId !== 'all' && (
+              <button
+                onClick={() => setActiveProjectId('all')}
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-xl transition-colors flex items-center gap-2"
+                title="Show all projects"
+              >
+                <X className="w-4 h-4" />
+                Clear Filter
+              </button>
+            )}
 
             <select
               value={filterStatus}
@@ -472,7 +516,55 @@ export default function App() {
 
         <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
           {view === 'current' ? (
-            <TaskGrid 
+            activeProjectId === 'all' ? (
+              // ✅ Project Selection Prompt
+              <div className="flex-1 flex items-center justify-center p-12">
+                <div className="text-center max-w-md">
+                  <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <FolderKanban className="w-10 h-10 text-purple-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                    Select a Project to Start
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    Choose a project from the dropdown above to view and manage tasks.
+                    Tasks are now organized by projects for better management.
+                  </p>
+                  {projects.length === 0 ? (
+                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-4">
+                      <p className="text-sm text-orange-800 font-medium">
+                        No projects yet. Create one in the History tab first!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-2 mb-6">
+                      {projects.slice(0, 5).map(project => (
+                        <button
+                          key={project.id}
+                          onClick={() => setActiveProjectId(project.id)}
+                          className="flex items-center gap-3 p-4 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition-colors text-left group"
+                        >
+                          <FolderKanban className="w-5 h-5 text-purple-600" />
+                          <div className="flex-1">
+                            <div className="font-semibold text-gray-900 group-hover:text-purple-700">
+                              {project.name}
+                            </div>
+                            {project.description && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                {project.description}
+                              </div>
+                            )}
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-purple-400 group-hover:text-purple-600" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              // ✅ TaskGrid when project selected
+              <TaskGrid 
               tasks={filteredTasks} 
               categories={categories} 
               statuses={statuses} 
@@ -519,6 +611,7 @@ export default function App() {
                 }
               }}
             />
+            )
           ) : view === 'history' ? (
             <HistoryView 
               projects={projects}
