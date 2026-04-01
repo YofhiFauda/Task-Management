@@ -1,104 +1,92 @@
-import React from 'react';
-import { Task, Category, Status } from '../types';
-import { format, parse } from 'date-fns';
-import { Calendar, ChevronRight } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Project, Task } from '../types';
+import { FolderKanban, Plus } from 'lucide-react';
 
 interface HistoryViewProps {
+  projects: Project[];
   tasks: Task[];
-  categories: Category[];
-  statuses: Status[];
-  onTaskClick: (task: Task) => void;
+  onCreateProject: (name: string, description: string) => Promise<void>;
+  onOpenProject: (projectId: string) => void;
 }
 
-export default function HistoryView({ tasks, categories, statuses, onTaskClick }: HistoryViewProps) {
-  // Group tasks by monthKey
-  const groupedTasks = tasks.reduce((acc, task) => {
-    if (!acc[task.monthKey]) acc[task.monthKey] = [];
-    acc[task.monthKey].push(task);
-    return acc;
-  }, {} as Record<string, Task[]>);
+export default function HistoryView({ projects, tasks, onCreateProject, onOpenProject }: HistoryViewProps) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Sort monthKeys descending
-  const sortedMonthKeys = Object.keys(groupedTasks).sort((a, b) => b.localeCompare(a));
+  const taskCountByProject = useMemo(() => {
+    return tasks.reduce((acc, task) => {
+      if (!task.projectId) return acc;
+      acc[task.projectId] = (acc[task.projectId] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [tasks]);
 
-  const getStatus = (id: string) => statuses.find(s => s.id === id);
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await onCreateProject(name.trim(), description.trim());
+      setName('');
+      setDescription('');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="flex-1 overflow-auto p-8 bg-gray-50/50">
-      <div className="max-w-4xl mx-auto space-y-12">
-        {sortedMonthKeys.length === 0 ? (
-          <div className="text-center py-24">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Calendar className="w-8 h-8 text-gray-300" />
-            </div>
-            <p className="text-gray-400 italic">No archived tasks found.</p>
+      <div className="max-w-5xl mx-auto space-y-8">
+        <form onSubmit={handleCreate} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-bold text-gray-900 mb-4">Create Task Project</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Project name"
+              className="px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+            />
+            <input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Description (optional)"
+              className="px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+            />
+            <button
+              type="submit"
+              disabled={!name.trim() || isSubmitting}
+              className="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold rounded-xl px-4 py-2.5"
+            >
+              <Plus className="w-4 h-4" />
+              Create Project
+            </button>
           </div>
+        </form>
+
+        {projects.length === 0 ? (
+          <div className="text-center py-24 text-gray-400">No projects yet.</div>
         ) : (
-          sortedMonthKeys.map(monthKey => {
-            const date = parse(monthKey, 'yyyy-MM', new Date());
-            const monthTasks = groupedTasks[monthKey];
-
-            return (
-              <div key={monthKey} className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <h3 className="text-xl font-bold text-gray-900">
-                    {format(date, 'MMMM yyyy')}
-                  </h3>
-                  <div className="flex-1 h-px bg-gray-200" />
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                    {monthTasks.length} Tasks
-                  </span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {projects.map((project) => (
+              <button
+                key={project.id}
+                onClick={() => onOpenProject(project.id)}
+                className="text-left bg-white p-5 rounded-2xl border border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="text-base font-bold text-gray-900">{project.name}</h4>
+                    <p className="text-sm text-gray-500 mt-1">{project.description || 'No description'}</p>
+                  </div>
+                  <FolderKanban className="w-5 h-5 text-indigo-500" />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {monthTasks.map(task => {
-                    const status = getStatus(task.statusId);
-                    return (
-                      <div 
-                        key={task.id}
-                        onClick={() => onTaskClick(task)}
-                        className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-indigo-100 transition-all cursor-pointer group"
-                      >
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <h4 className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                              {task.title}
-                            </h4>
-                            <p className="text-xs text-gray-500 mt-1 line-clamp-1">
-                              {task.description ? task.description.replace(/<[^>]*>?/gm, '') : ''}
-                            </p>
-                          </div>
-                          <span 
-                            className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter"
-                            style={{ 
-                              backgroundColor: status?.color ? `${status.color}15` : '#f3f4f6',
-                              color: status?.color || '#374151'
-                            }}
-                          >
-                            {status?.name}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between pt-3 border-t border-gray-50">
-                          <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 bg-gray-100 rounded-full flex items-center justify-center">
-                              <span className="text-[8px] font-bold text-gray-400">
-                                {task.creatorName.charAt(0)}
-                              </span>
-                            </div>
-                            <span className="text-[10px] text-gray-500 font-medium">{task.creatorName}</span>
-                          </div>
-                          <div className="flex items-center gap-1 text-[10px] text-gray-400 font-mono">
-                            {task.date ? format(new Date(task.date), 'MMM d') : '-'}
-                            <ChevronRight className="w-3 h-3" />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })
+                <p className="mt-4 text-xs uppercase tracking-wider text-gray-400 font-semibold">
+                  {taskCountByProject[project.id] || 0} tasks
+                </p>
+              </button>
+            ))}
+          </div>
         )}
       </div>
     </div>
