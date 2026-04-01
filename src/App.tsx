@@ -22,10 +22,6 @@ import {
   updateDoc,
   deleteDoc,
   addDoc,
-<<<<<<< codex/fix-task-addition-logic-and-history-functionality-vjqrzi
-  serverTimestamp,
-=======
->>>>>>> main
   OperationType,
   handleFirestoreError,
   writeBatch
@@ -515,11 +511,6 @@ export default function App() {
                     name,
                     description,
                     createdBy: user.uid,
-<<<<<<< codex/fix-task-addition-logic-and-history-functionality-vjqrzi
-                    createdAt: serverTimestamp()
-=======
-                    createdAt: new Date().toISOString()
->>>>>>> main
                   });
                 } catch (error) {
                   handleFirestoreError(error, OperationType.CREATE, 'projects');
