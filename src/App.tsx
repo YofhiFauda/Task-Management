@@ -42,7 +42,8 @@ import {
   ChevronDown,
   Table as TableIcon,
   Bell,
-  Zap
+  Zap,
+  FolderKanban  // ✅ Added
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -60,6 +61,7 @@ import TaskModal from './components/TaskModal';
 import SettingsModal from './components/SettingsModal';
 import HistoryView from './components/HistoryView';
 import CheatSheetView from './components/CheatSheetView';
+import BulkProjectAssigner from './components/BulkProjectAssigner';  // ✅ Added
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -76,6 +78,7 @@ export default function App() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isBulkAssignerOpen, setIsBulkAssignerOpen] = useState(false);  // ✅ Added
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string | 'all'>('all');
   const [activeProjectId, setActiveProjectId] = useState<string | 'all'>('all');
@@ -301,6 +304,16 @@ export default function App() {
               className="pl-10 pr-4 py-2 bg-gray-100 border-transparent focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent rounded-xl text-sm w-64 transition-all"
             />
           </div>
+
+          {/* ✅ Bulk Project Assigner Button */}
+          <button
+            onClick={() => setIsBulkAssignerOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold rounded-lg transition-colors border border-purple-200"
+            title="Assign tasks to projects"
+          >
+            <FolderKanban className="w-4 h-4" />
+            <span className="text-sm">Bulk Assign</span>
+          </button>
           
           <div className="relative">
             <button
@@ -464,6 +477,7 @@ export default function App() {
               categories={categories} 
               statuses={statuses} 
               columns={columns}
+              projects={projects}  // ✅ Added
               onTaskClick={(task) => {
                 setSelectedTask(task);
                 setIsTaskModalOpen(true);
@@ -555,6 +569,17 @@ export default function App() {
             statuses={statuses}
             columns={columns}
             onClose={() => setIsSettingsModalOpen(false)}
+          />
+        )}
+        {/* ✅ Bulk Project Assigner Modal */}
+        {isBulkAssignerOpen && (
+          <BulkProjectAssigner
+            tasks={tasks}
+            projects={projects}
+            onClose={() => setIsBulkAssignerOpen(false)}
+            onComplete={() => {
+              // Refresh akan terjadi otomatis karena onSnapshot
+            }}
           />
         )}
       </AnimatePresence>
