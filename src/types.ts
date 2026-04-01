@@ -25,7 +25,7 @@ export interface Project {
   id: string;
   name: string;
   description?: string;
-  createdBy: string;
+  userId: string;  // ✅ FIXED: Changed from createdBy to userId for consistency
   createdAt?: Timestamp;
 }
 
