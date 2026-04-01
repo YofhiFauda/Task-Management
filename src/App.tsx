@@ -22,7 +22,6 @@ import {
   updateDoc,
   deleteDoc,
   addDoc,
-  serverTimestamp,
   OperationType,
   handleFirestoreError,
   writeBatch
@@ -512,7 +511,6 @@ export default function App() {
                     name,
                     description,
                     createdBy: user.uid,
-                    createdAt: serverTimestamp()
                   });
                 } catch (error) {
                   handleFirestoreError(error, OperationType.CREATE, 'projects');
