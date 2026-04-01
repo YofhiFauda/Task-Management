@@ -18,6 +18,15 @@ export interface Task {
   order: number;
   commentCount?: number;
   isPinned?: boolean;
+  projectId?: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  createdBy: string;
+  createdAt?: Timestamp;
 }
 
 export interface UserProfile {
